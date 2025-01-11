@@ -99,9 +99,32 @@ def CreatePlanes(reader: vtk.vtkNrrdReader) -> list[vtk.vtkImageActor]:
         for i in range(3)
     ]
 
-    # Create the sagittal plane using X-axis
+    # Create separate flip filters for each plane
+    flipX = vtk.vtkImageFlip()
+    flipX.SetInputConnection(reader.GetOutputPort())
+    flipX.SetFilteredAxis(0)  # Flip along X-axis
+    flipX.Update()
+
+    flipY = vtk.vtkImageFlip()
+    flipY.SetInputConnection(reader.GetOutputPort())
+    flipY.SetFilteredAxis(1)  # Flip along Y-axis
+    flipY.Update()
+
+    # Chain flip for axial plane - flip Y after X
+    flipXY = vtk.vtkImageFlip()
+    flipXY.SetInputConnection(flipX.GetOutputPort())
+    flipXY.SetFilteredAxis(1)  # Flip along Y-axis
+    flipXY.Update()
+
+    # Chain flip for coronal plane - flip Y and then X
+    flipYX = vtk.vtkImageFlip()
+    flipYX.SetInputConnection(flipY.GetOutputPort())
+    flipYX.SetFilteredAxis(0)  # Flip along X-axis
+    flipYX.Update()
+
+    # Create the sagittal plane using X-axis flip
     sagittal = vtk.vtkImageActor()
-    sagittal.GetMapper().SetInputConnection(reader.GetOutputPort())
+    sagittal.GetMapper().SetInputConnection(flipX.GetOutputPort())
     sagittal.SetDisplayExtent(
         int(center[0] / spacing[0]),
         int(center[0] / spacing[0]),
@@ -111,9 +134,9 @@ def CreatePlanes(reader: vtk.vtkNrrdReader) -> list[vtk.vtkImageActor]:
         dimensions[2] - 1
     )
 
-    # Create the axial plane using Z-axis
+    # Create the axial plane using combined X and Y axis flips
     axial = vtk.vtkImageActor()
-    axial.GetMapper().SetInputConnection(reader.GetOutputPort())
+    axial.GetMapper().SetInputConnection(flipXY.GetOutputPort())
     axial.SetDisplayExtent(
         0,
         dimensions[0] - 1,
@@ -123,9 +146,9 @@ def CreatePlanes(reader: vtk.vtkNrrdReader) -> list[vtk.vtkImageActor]:
         int(center[2] / spacing[2])
     )
 
-    # Create the coronal plane using Y-axis
+    # Create the coronal plane using combined Y and X axis flips
     coronal = vtk.vtkImageActor()
-    coronal.GetMapper().SetInputConnection(reader.GetOutputPort())
+    coronal.GetMapper().SetInputConnection(flipYX.GetOutputPort())
     coronal.SetDisplayExtent(
         0,
         dimensions[0] - 1,
@@ -153,7 +176,7 @@ def AddSliders(renderer, interactor, planes):
     positions = [
         [[-150, -50, 150], [0, -50, 150]],  # Sagittal slider (poziomy, na lewo)
         [[150, 0, -50], [150, 0, -150]],      # Axial slider (pionowy, po prawej)
-        [[-50, 50, 0], [-50, 150, 0]]      # Coronal slider (pionowy, z tyłu)
+        [[-50, 50, 0], [-50, -150, 0]]      # Coronal slider (pionowy, z tyłu)
     ]
 
     for i, (plane, axis) in enumerate(zip(planes, [0, 2, 1])):  # Mapowanie: sagittal -> X, axial -> Z, coronal -> Y
