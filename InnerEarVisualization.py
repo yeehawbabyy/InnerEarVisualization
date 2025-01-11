@@ -28,12 +28,6 @@ def LoadFiles(nrrdFolder: str, vtkFolder: str) -> tuple[list[vtk.vtkActor], vtk.
             reader.SetFileName(nrrdPath)
             reader.Update()
 
-            # Flip the image along the Y-axis
-            flippedReader = vtk.vtkImageFlip()
-            flippedReader.SetInputConnection(reader.GetOutputPort())
-            flippedReader.SetFilteredAxis(0)  # 0 for X, 1 for Y, 2 for Z
-            flippedReader.Update()
-
             break  # Load only the first NRRD file
 
     # Load the colored parts of the inner ear
