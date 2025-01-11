@@ -1,15 +1,5 @@
 import vtk
 import os
-from PyQt5.QtWidgets import QApplication, QMainWindow, QSlider, QVBoxLayout, QWidget, QLabel
-from PyQt5.QtCore import Qt
-
-def GetDataRange(reader: vtk.vtkAlgorithm) -> tuple[float, float]:
-    """
-    Gets the data range (min and max values) from the NRRD file
-    """
-    data = reader.GetOutput()
-    scalarRange = data.GetScalarRange()
-    return scalarRange
 
 def LoadFiles(nrrdFolder: str, vtkFolder: str) -> tuple[list[vtk.vtkActor], vtk.vtkNrrdReader | None]:
     """
@@ -25,12 +15,15 @@ def LoadFiles(nrrdFolder: str, vtkFolder: str) -> tuple[list[vtk.vtkActor], vtk.
             reader = vtk.vtkNrrdReader()
             reader.SetFileName(nrrdPath)
             reader.Update()
-            
-            scalarRange = GetDataRange(reader)
-            print(f"Data range for {filename}: {scalarRange}")
+
+            #TODO Flip the image along the Y-axis
+            flippedReader = vtk.vtkImageFlip()
+            flippedReader.SetInputConnection(reader.GetOutputPort())
+            flippedReader.SetFilteredAxis(1)  # 0 for X, 1 for Y, 2 for Z
+            flippedReader.Update()
 
             # Create planes for the chosen NRRD file
-            planeActors = CreatePlanes(reader)
+            planeActors = CreatePlanes(flippedReader)
             vtkActors.extend(planeActors)
             break  # Load only first NRRD file
 
@@ -46,13 +39,13 @@ def ColorSpecificParts(vtkFolder: str) -> list[vtk.vtkActor]:
     """
     actors = []
     colors = [
-        (1.0, 0.0, 0.0),      # Red
+        (0.6, 1.0, 0.6),      # Light Green
         (0.0, 1.0, 0.0),      # Green
         (0.0, 0.0, 1.0),      # Blue
-        (0.6, 1.0, 0.6),      # Light Green
+        (0.5, 0.5, 0.5),      # Gray
         (0.6, 0.8, 1.0),      # Light Blue
         (1.0, 0.7, 0.7),      # Pink
-        (0.5, 0.5, 0.5),      # Gray
+        (1.0, 0.0, 0.0),      # Red
         (0.6, 0.4, 0.2)       # Brownish
     ]
 
@@ -74,6 +67,11 @@ def ColorSpecificParts(vtkFolder: str) -> list[vtk.vtkActor]:
             color = colors[i % len(colors)]
             actor.GetProperty().SetColor(color)
             
+            # Set opacity as 0.1 for the temporal bone, internal jugular vein and internal carotid vein
+            #to improve visibilty of the inner ear
+            if(filename == "Model_3_Temporal_Bone.vtk" or filename == "Model_21_Internal_Jugular_Vein.vtk" or filename == "Model_24_Internal_Carotid_Artery.vtk"):
+                actor.GetProperty().SetOpacity(0.1) 
+
             actors.append(actor)
 
     return actors
