@@ -1,7 +1,8 @@
 import vtk
 import os
-from vtkmodules.vtkInteractionWidgets import (vtkSliderRepresentation3D, vtkSliderWidget)
+
 class SliderCallback:
+    
     def __init__(self, plane, axis):
         self.plane = plane
         self.axis = axis
@@ -29,12 +30,32 @@ def LoadFiles(nrrdFolder: str, vtkFolder: str) -> tuple[list[vtk.vtkActor], vtk.
             reader.Update()
 
             break  # Load only the first NRRD file
+    
+    # Load the outline
+    outlineActor = CreateOutline(reader)
+    vtkActors.append(outlineActor)
 
     # Load the colored parts of the inner ear
     earActors = ColorSpecificParts(vtkFolder)
     vtkActors.extend(earActors)
 
     return vtkActors, reader
+
+def CreateOutline(reader: vtk.vtkNrrdReader) -> vtk.vtkActor:
+    """
+    Creates an outline around the NRRD file
+    """
+    outlineData = vtk.vtkOutlineFilter()
+    outlineData.SetInputConnection(reader.GetOutputPort())
+
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputConnection(outlineData.GetOutputPort())
+
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+    actor.GetProperty().SetColor(0, 0, 0)  # Black color
+
+    return actor
 
 def ColorSpecificParts(vtkFolder: str) -> list[vtk.vtkActor]:
     """
@@ -69,6 +90,7 @@ def ColorSpecificParts(vtkFolder: str) -> list[vtk.vtkActor]:
             # Set a specific color for each part
             color = colors[i % len(colors)]
             actor.GetProperty().SetColor(color)
+
 
             # Set opacity as 0.1 for specific models to improve visibility
             if filename in ["Model_3_Temporal_Bone.vtk", "Model_21_Internal_Jugular_Vein.vtk", "Model_24_Internal_Carotid_Artery.vtk"]:
