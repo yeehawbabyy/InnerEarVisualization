@@ -1,6 +1,6 @@
 import vtk
 import os
-
+from vtkmodules.vtkInteractionWidgets import (vtkSliderRepresentation3D, vtkSliderWidget)
 class SliderCallback:
     def __init__(self, plane, axis):
         self.plane = plane
@@ -122,9 +122,9 @@ def CreatePlanes(reader: vtk.vtkNrrdReader) -> list[vtk.vtkImageActor]:
     flipYX.SetFilteredAxis(0)  # Flip along X-axis
     flipYX.Update()
 
-    # Create the sagittal plane using X-axis flip
+    # Chain flip for the sagittal plane - flip X and then Y
     sagittal = vtk.vtkImageActor()
-    sagittal.GetMapper().SetInputConnection(flipX.GetOutputPort())
+    sagittal.GetMapper().SetInputConnection(flipXY.GetOutputPort())
     sagittal.SetDisplayExtent(
         int(center[0] / spacing[0]),
         int(center[0] / spacing[0]),
@@ -174,9 +174,9 @@ def AddSliders(renderer, interactor, planes):
 
     # Pozycje początkowe i końcowe dla każdego suwaka w przestrzeni 3D
     positions = [
-        [[-150, -50, 150], [0, -50, 150]],  # Sagittal slider (poziomy, na lewo)
-        [[150, 0, -50], [150, 0, -150]],      # Axial slider (pionowy, po prawej)
-        [[-50, 50, 0], [-50, -150, 0]]      # Coronal slider (pionowy, z tyłu)
+        [[-75, -75, 100], [0, -75, 100]],  # Sagittal slider (poziomy, na lewo)
+        [[-75, -75, 135], [-75, -75, 101.25]],      # Axial slider (pionowy, po prawej)
+        [[-75, 25, 100], [-75, -75, 100]]      # Coronal slider (pionowy, z tyłu)
     ]
 
     for i, (plane, axis) in enumerate(zip(planes, [0, 2, 1])):  # Mapowanie: sagittal -> X, axial -> Z, coronal -> Y
@@ -184,11 +184,11 @@ def AddSliders(renderer, interactor, planes):
         sliderRep.SetMinimumValue(0)
         sliderRep.SetMaximumValue(plane.GetInput().GetDimensions()[axis] - 1)
         sliderRep.SetValue(plane.GetDisplayExtent()[axis * 2])
-        sliderRep.GetSliderProperty().SetColor(1, 0, 0)  # Czerwony
-        sliderRep.GetSelectedProperty().SetColor(1, 1, 1)  # Biały
+        sliderRep.GetSliderProperty().SetColor(1, 0, 0)  # knob color - red
+        sliderRep.GetSelectedProperty().SetColor(1, 1, 1)  # slider color - white
         sliderRep.SetTitleText(axis_labels[i])
         sliderRep.GetSelectedProperty().SetColor(1, 1, 1)  # Biały tekst
-        sliderRep.GetSelectedProperty().SetColor(1, 1, 1)  # Biały tekst etykiety
+    
 
         # Ustaw pozycję suwaka w przestrzeni 3D
         sliderRep.SetPoint1InWorldCoordinates(*positions[i][0])
