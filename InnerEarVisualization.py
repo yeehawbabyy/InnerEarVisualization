@@ -34,10 +34,7 @@ def LoadFiles(nrrdFolder: str, vtkFolder: str) -> tuple[list[vtk.vtkActor], vtk.
             flippedReader.SetFilteredAxis(0)  # 0 for X, 1 for Y, 2 for Z
             flippedReader.Update()
 
-            # Create planes for the chosen NRRD file
-            planeActors = CreatePlanes(flippedReader)
-            vtkActors.extend(planeActors)
-            break  # Load only first NRRD file
+            break  # Load only the first NRRD file
 
     # Load the colored parts of the inner ear
     earActors = ColorSpecificParts(vtkFolder)
@@ -102,32 +99,9 @@ def CreatePlanes(reader: vtk.vtkNrrdReader) -> list[vtk.vtkImageActor]:
         for i in range(3)
     ]
 
-    # Create separate flip filters for each axis
-    flipX = vtk.vtkImageFlip()
-    flipX.SetInputConnection(reader.GetOutputPort())
-    flipX.SetFilteredAxis(0)  # X axis
-    flipX.Update()
-
-    flipY = vtk.vtkImageFlip()
-    flipY.SetInputConnection(reader.GetOutputPort())
-    flipY.SetFilteredAxis(1)  # Y axis
-    flipY.Update()
-
-    # Chain flip for axial plane - flip Y after X
-    flipXY = vtk.vtkImageFlip()
-    flipXY.SetInputConnection(flipX.GetOutputPort())
-    flipXY.SetFilteredAxis(1)
-    flipXY.Update()
-
-    # Chain flips for coronal plane - flip Y and then X
-    flipYX = vtk.vtkImageFlip()
-    flipYX.SetInputConnection(flipY.GetOutputPort())
-    flipYX.SetFilteredAxis(0)
-    flipYX.Update()
-
-    # Create the sagittal plane using X-axis flip
+    # Create the sagittal plane using X-axis
     sagittal = vtk.vtkImageActor()
-    sagittal.GetMapper().SetInputConnection(flipX.GetOutputPort())
+    sagittal.GetMapper().SetInputConnection(reader.GetOutputPort())
     sagittal.SetDisplayExtent(
         int(center[0] / spacing[0]),
         int(center[0] / spacing[0]),
@@ -137,9 +111,9 @@ def CreatePlanes(reader: vtk.vtkNrrdReader) -> list[vtk.vtkImageActor]:
         dimensions[2] - 1
     )
 
-    # Create the axial plane using combined X and Y axis flips
+    # Create the axial plane using Z-axis
     axial = vtk.vtkImageActor()
-    axial.GetMapper().SetInputConnection(flipXY.GetOutputPort())
+    axial.GetMapper().SetInputConnection(reader.GetOutputPort())
     axial.SetDisplayExtent(
         0,
         dimensions[0] - 1,
@@ -149,9 +123,9 @@ def CreatePlanes(reader: vtk.vtkNrrdReader) -> list[vtk.vtkImageActor]:
         int(center[2] / spacing[2])
     )
 
-    # Create the coronal plane using combined Y and X axis flips
+    # Create the coronal plane using Y-axis
     coronal = vtk.vtkImageActor()
-    coronal.GetMapper().SetInputConnection(flipYX.GetOutputPort())
+    coronal.GetMapper().SetInputConnection(reader.GetOutputPort())
     coronal.SetDisplayExtent(
         0,
         dimensions[0] - 1,
@@ -174,25 +148,30 @@ def AddSliders(renderer, interactor, planes):
     """
     axis_labels = ["Sagittal", "Axial", "Coronal"]
     sliders = []
+
+    # Pozycje początkowe i końcowe dla każdego suwaka w przestrzeni 3D
     positions = [
-        [[0, -150, 150], [0, -50, 150]],  # Sagittal slider perpendicular to the XZ-plane
-        [[150, 0, -150], [150, 0, -50]],  # Axial slider perpendicular to the YZ-plane
-        [[-150, 150, 0], [-50, 150, 0]]   # Coronal slider perpendicular to the XY-plane
+        [[-150, -50, 150], [0, -50, 150]],  # Sagittal slider (poziomy, na lewo)
+        [[150, 0, -50], [150, 0, -150]],      # Axial slider (pionowy, po prawej)
+        [[-50, 50, 0], [-50, 150, 0]]      # Coronal slider (pionowy, z tyłu)
     ]
 
-    for i, (plane, axis) in enumerate(zip(planes, [0, 2, 1])):  # Map planes to axes (X, Z, Y)
+    for i, (plane, axis) in enumerate(zip(planes, [0, 2, 1])):  # Mapowanie: sagittal -> X, axial -> Z, coronal -> Y
         sliderRep = vtk.vtkSliderRepresentation3D()
         sliderRep.SetMinimumValue(0)
         sliderRep.SetMaximumValue(plane.GetInput().GetDimensions()[axis] - 1)
         sliderRep.SetValue(plane.GetDisplayExtent()[axis * 2])
-        sliderRep.GetSliderProperty().SetColor(1, 0, 0)  # Red
-        sliderRep.GetSelectedProperty().SetColor(1, 1, 1)  # White
+        sliderRep.GetSliderProperty().SetColor(1, 0, 0)  # Czerwony
+        sliderRep.GetSelectedProperty().SetColor(1, 1, 1)  # Biały
         sliderRep.SetTitleText(axis_labels[i])
+        sliderRep.GetSelectedProperty().SetColor(1, 1, 1)  # Biały tekst
+        sliderRep.GetSelectedProperty().SetColor(1, 1, 1)  # Biały tekst etykiety
 
-        # Set slider position based on perpendicular orientation
+        # Ustaw pozycję suwaka w przestrzeni 3D
         sliderRep.SetPoint1InWorldCoordinates(*positions[i][0])
         sliderRep.SetPoint2InWorldCoordinates(*positions[i][1])
 
+        # Tworzenie suwaka i przypisanie callbacku
         slider = vtk.vtkSliderWidget()
         slider.SetInteractor(interactor)
         slider.SetRepresentation(sliderRep)
@@ -201,6 +180,7 @@ def AddSliders(renderer, interactor, planes):
         sliders.append(slider)
 
     return sliders
+
 
 def Render3DWithSliders(objects: list[vtk.vtkActor], planes: list[vtk.vtkImageActor]) -> None:
     """
@@ -213,9 +193,13 @@ def Render3DWithSliders(objects: list[vtk.vtkActor], planes: list[vtk.vtkImageAc
     # Create renderer
     renderer = vtk.vtkRenderer()
 
-    # Add all actors
-    for obj in objects + planes:
+    # Add all static actors (models, etc.)
+    for obj in objects:
         renderer.AddActor(obj)
+
+    # Add only the first instance of each plane
+    for plane in planes:
+        renderer.AddActor(plane)
 
     # Create render window
     renderWindow = vtk.vtkRenderWindow()
