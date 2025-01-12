@@ -53,7 +53,7 @@ def CreateOutline(reader: vtk.vtkNrrdReader) -> vtk.vtkActor:
 
     actor = vtk.vtkActor()
     actor.SetMapper(mapper)
-    actor.GetProperty().SetColor(0, 0, 0)  # Black color
+    actor.GetProperty().SetColor(255, 255, 255)
 
     return actor
 
@@ -72,10 +72,23 @@ def ColorSpecificParts(vtkFolder: str) -> list[vtk.vtkActor]:
         (1.0, 0.0, 0.0),      # Red
         (0.6, 0.4, 0.2)       # Brownish
     ]
+    colorNames = [
+        "Light Green",
+        "Green",
+        "Blue",
+        "Gray",
+        "Light Blue",
+        "Pink",
+        "Red",
+        "Brownish"
+    ]
 
     for i, filename in enumerate(os.listdir(vtkFolder)):
         if filename.endswith(".vtk"):
             filepath = os.path.join(vtkFolder, filename)
+
+            structureName = filename.split('_', 2)[-1].replace('.vtk', '')
+            structureName = structureName.replace('_', ' ')
 
             reader = vtk.vtkPolyDataReader()
             reader.SetFileName(filepath)
@@ -91,10 +104,15 @@ def ColorSpecificParts(vtkFolder: str) -> list[vtk.vtkActor]:
             color = colors[i % len(colors)]
             actor.GetProperty().SetColor(color)
 
+            print(f"Structure: {structureName}")
+            print(f"Color: {colorNames[i % len(colorNames)]}")
+            print("-" * 40)
 
             # Set opacity as 0.1 for specific models to improve visibility
             if filename in ["Model_3_Temporal_Bone.vtk", "Model_21_Internal_Jugular_Vein.vtk", "Model_24_Internal_Carotid_Artery.vtk"]:
                 actor.GetProperty().SetOpacity(0.1)
+                print(f"Note: {structureName} has reduced opacity (0.1)")
+                print("-" * 40)
 
             actors.append(actor)
 
@@ -185,14 +203,14 @@ def AddSliders(renderer, interactor, planes):
     """
     Adds 3D sliders to control the positions of the planes (sagittal, axial, coronal)
     """
-    axis_labels = ["Sagittal", "Axial", "Coronal"]
     sliders = []
 
+    sliderLength = 75
     # Pozycje początkowe i końcowe dla każdego suwaka w przestrzeni 3D
     positions = [
-        [[-75, -75, 100], [0, -75, 100]],  # Sagittal slider (poziomy, na lewo)
-        [[-75, -75, 135], [-75, -75, 101.25]],      # Axial slider (pionowy, po prawej)
-        [[-75, 25, 100], [-75, -75, 100]]      # Coronal slider (pionowy, z tyłu)
+        [[-75, -75, 100], [-75+sliderLength, -75, 100]],  # Sagittal slider (poziomy, na lewo)
+        [[-75, -75, 100+sliderLength], [-75, -75, 101.25]],      # Axial slider (pionowy, po prawej)
+        [[-75, -75+sliderLength, 100], [-75, -75, 100]]      # Coronal slider (pionowy, z tyłu)
     ]
 
     for i, (plane, axis) in enumerate(zip(planes, [0, 2, 1])):  # Mapowanie: sagittal -> X, axial -> Z, coronal -> Y
@@ -202,10 +220,7 @@ def AddSliders(renderer, interactor, planes):
         sliderRep.SetValue(plane.GetDisplayExtent()[axis * 2])
         sliderRep.GetSliderProperty().SetColor(1, 0, 0)  # knob color - red
         sliderRep.GetSelectedProperty().SetColor(1, 1, 1)  # slider color - white
-        sliderRep.SetTitleText(axis_labels[i])
-        sliderRep.GetSelectedProperty().SetColor(1, 1, 1)  # Biały tekst
     
-
         # Ustaw pozycję suwaka w przestrzeni 3D
         sliderRep.SetPoint1InWorldCoordinates(*positions[i][0])
         sliderRep.SetPoint2InWorldCoordinates(*positions[i][1])
@@ -227,7 +242,7 @@ def Render3DWithSliders(objects: list[vtk.vtkActor], planes: list[vtk.vtkImageAc
     """
     # Set background color
     colors = vtk.vtkNamedColors()
-    colors.SetColor("BkgColor", [26, 51, 102, 255])
+    colors.SetColor("BkgColor", [0, 0, 0, 255])
 
     # Create renderer
     renderer = vtk.vtkRenderer()
