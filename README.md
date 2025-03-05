@@ -32,7 +32,11 @@ python main.py
 
 This GIF shows the visualization of the inner ear structures as well as three planes that allow you to see the CT scan.
 
-![GIF](/demo.gif) 
+<div align="center">
+
+![Demo GIF](/demo.gif) 
+
+</div>
 
 ## Contributing
 
