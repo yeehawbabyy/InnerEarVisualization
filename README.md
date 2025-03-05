@@ -13,17 +13,6 @@ This project is a Python-based tool for visualizing the inner ear. It uses data 
 
 2. Download the necessary data files from [Open Anatomy](https://www.openanatomy.org/atlases/nac/inner-ear-2018-02.zip) and unpack them in the same folder as the Python script.
 
-3. Install the required Python packages:
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-## Usage
-
-Run the visualization script:
-```bash
-python main.py
-```
 
 ## Demonstration
 
