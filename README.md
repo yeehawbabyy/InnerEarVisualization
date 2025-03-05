@@ -1,6 +1,3 @@
-I was able to retrieve the current README file, but I couldn't fetch the main.py file. Here is a draft README based on the information available:
-
----
 
 # Inner Ear Visualization
 
